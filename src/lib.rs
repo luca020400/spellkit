@@ -45,8 +45,8 @@ pub enum Error {
     UnsupportedLocale { locale: String },
     /// No Hunspell `.aff` / `.dic` pair was found (Linux / other Unix).
     ///
-    /// `searched` is the directory list that was walked (`DICPATH` then the
-    /// built-in system paths).
+    /// `searched` is the directory list that was walked (`DICPATH`, XDG
+    /// hunspell dirs, system paths, then Flatpak `/app/share/hunspell`).
     DictionaryNotFound {
         locale: String,
         searched: Vec<PathBuf>,
@@ -181,7 +181,11 @@ impl Checker {
 
     /// Create a checker for a specific locale (`en_US` or `en-US` both work).
     ///
-    /// - empty string - [`Error::InvalidLocale`]
+    /// A POSIX encoding or `@modifier` is stripped first. On Linux the raw stem
+    /// is tried before the normalized name (so `en_US-large` works), and a bare
+    /// `en` falls back to `en_US` then `en_GB`.
+    ///
+    /// - empty string → [`Error::InvalidLocale`]
     /// - **Linux:** missing `.aff` / `.dic` → [`Error::DictionaryNotFound`]
     /// - **macOS / Windows:** language not installed → [`Error::UnsupportedLocale`]
     pub fn with_locale(locale: &str) -> Result<Self, Error> {
@@ -260,8 +264,8 @@ impl Checker {
 
     /// Locales the OS can check.
     ///
-    /// Linux: Hunspell `*.dic` stems on `DICPATH` and the system dict dirs.
-    /// macOS: `NSSpellChecker` available languages. Windows: `SupportedLanguages`.
+    /// Linux: Hunspell `*.dic` stems on `DICPATH`, XDG data dirs, system
+    /// paths, and `/app/share/hunspell`.
     pub fn available_locales() -> Vec<String> {
         imp::Checker::available_locales()
     }
